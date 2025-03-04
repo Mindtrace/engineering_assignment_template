@@ -23,8 +23,7 @@ class MlflowLightningCallback(Callback):
         # Initialize the callback
         mlflow_callback = MlflowLightningCallback(
             params={"param1": "value1"},
-            experiment_name="my_experiment",
-            tracking_uri="http://localhost:5000"
+            experiment_name="my_experiment"
         )
 
         # Initialize a model and dataset
