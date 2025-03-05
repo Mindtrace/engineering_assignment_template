@@ -37,11 +37,13 @@ class MNISTDataModule(pl.LightningDataModule):
 
     Example, Using the DataModule with a PyTorch Lightning Trainer::
 
-        from mindtrace.data import MNIST
         from pytorch_lightning import Trainer
+        from mindtrace.data import MNIST
+        from mindtrace.models import MLP
 
-        # Instantiate MNIST dataset module
+        # Instantiate MNIST dataset module and model
         dm = MNIST()
+        model = MLP()
 
         # Pass MNIST dataset module to PyTorch Lightning Trainer
         trainer = Trainer()
