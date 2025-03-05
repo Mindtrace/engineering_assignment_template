@@ -10,7 +10,7 @@ You have been provided with the basic Mindtrace library which includes:
   - utils.py: Contains various helper methods.
   - callbacks.py: Contains an MLflow callback that logs metrics and model artifacts.
 
-The library is can be used to train a model as follows:
+The library can be used to train a model as follows:
 
 ```python
 from pytorch_lightning import Trainer
