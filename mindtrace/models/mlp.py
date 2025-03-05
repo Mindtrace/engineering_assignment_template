@@ -1,8 +1,8 @@
 from typing import List, Optional, Union
 
 import numpy as np
-import torch
 from PIL.Image import Image
+import torch
 from torch import nn
 
 from mindtrace.utils import ifnone, pil_to_tensor
