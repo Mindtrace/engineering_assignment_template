@@ -7,7 +7,7 @@ from mindtrace.utils import ifnone
 
 
 class Config:
-    """Mtrix Config.
+    """Mindtrace Config.
 
     To use the config parser, fill out the *config.ini* file. It includes paths to local directories as well as API keys
     necessary to use some services, such as OpenAI (ChatGPT) or the Discord Client.
@@ -21,16 +21,17 @@ class Config:
 
     Args:
         config_path: The complete path to the .ini file. If `None`, it:
-            1. Checks `MtrixConfig` environment variable for a file path and loads it.
+            1. Checks `MindtraceConfig` environment variable for a file path and loads it.
             2. Loads default `config.ini` in the core directory.
 
     **Configuration Precedence (Highest to Lowest Priority)**:
 
     1. **Environment Variables**: If a matching environment variable is set, it **overrides** the config file value.
-       - Format: `{SECTION}__{KEY}` (e.g., `MTRIX__ROOT_DIR` for `[MTRIX] ROOT_DIR` in ini file)
+       - Format: `{SECTION}__{KEY}` (e.g., `MINDTRACE__ROOT_DIR` for `[MINDTRACE] ROOT_DIR` in ini file)
        - If the value starts with `~`, it is expanded to the user's home directory.
 
-    2. **User-defined Configuration File (`.ini`)**: User defined Configuration file can be passed as an argument, if not provided file path defined in `MtrixConfig` environment variable is loaded.
+    2. **User-defined Configuration File (`.ini`)**: User defined Configuration file can be passed as an argument, if
+    not provided file path defined in `MindtraceConfig` environment variable is loaded.
 
     3. **Default Configuration File (`config.ini`)**: If no overrides exist, values are taken from `config.ini`.
 
@@ -63,7 +64,7 @@ class Config:
 
         # User-defined config (Higher priority)
 
-        user_config_path = ifnone(config_path, os.environ.get("MtrixConfig"))
+        user_config_path = ifnone(config_path, os.environ.get("MindtraceConfig"))
 
         # Step 1️ Load default config first
         if os.path.exists(default_config_path):
@@ -146,7 +147,7 @@ class _ConfigSection:
             val = os.environ[env_var]
             return val.replace("~", os.path.expanduser("~")) if val.startswith("~") else val
 
-        # 2. Check user-defined configuration file (MtrixConfig) if it exists
+        # 2. Check user-defined configuration file (MindtraceConfig) if it exists
         if key in self.config[self.section]:
             return self.config[self.section][key]
 
