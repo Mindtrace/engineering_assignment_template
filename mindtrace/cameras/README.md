@@ -15,7 +15,7 @@ uv run python -m mindtrace.scripts.camera_setup
 ### 1. Listing Available Cameras
 To view the entire list of available cameras, use the following command:
 ```python
-from mtrix.cameras.daheng.daheng_cameras import DahengCamera
+from mindtrace.cameras.daheng.daheng_cameras import DahengCamera
 camera_list = DahengCamera.get_available_cameras()
 print('Available cameras:', camera_list)
 ```
