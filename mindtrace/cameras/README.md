@@ -5,7 +5,6 @@ The following instructions are to setup and use Daheng cameras for camera captur
 
 Requires sudo access to install Daheng SDK.
 ```bash
-cd mt-rix
 uv sync
 uv run python -m mindtrace.scripts.camera_setup
 ```
