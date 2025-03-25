@@ -21,7 +21,7 @@ class DahengCamera(BaseCamera):
     def __init__(
         self,
         camera_name: str,
-        camera_config: Optional[str] = "",
+        camera_config: Optional[str] = None,
         img_quality_enhancement: bool = False,
         retrieve_retry_count: int = 3,
     ):
@@ -246,15 +246,6 @@ class DahengCamera(BaseCamera):
     def capture(self) -> Tuple[bool, np.ndarray]:
         """
         Capture an image from the Daheng camera.
-
-                This method goes through the following logic:
-            1. Check if camera is initialized
-            2. Retrieve image. If image is incomplete, try again until retrieve_retry_count.
-            3. If image is still not retrieved, return None
-            4. Convert the image to RGB format, apply image improvements if necessary
-            5. Convert the image to BGR format
-            6. Return status and image
-
         Returns:
             (status: bool, image: np.ndarray)
         """
