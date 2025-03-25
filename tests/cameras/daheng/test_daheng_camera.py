@@ -10,8 +10,6 @@ def camera():
     if not camera_list:
         pytest.skip("No Daheng cameras found.")
     camera = DahengCamera(camera_name=camera_list[0])
-    yield camera
-    camera.close()
 
 
 def test_get_available_cameras(camera):
