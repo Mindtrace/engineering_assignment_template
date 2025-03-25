@@ -6,11 +6,27 @@ import PIL
 from PIL.Image import Image
 import torch
 from torchvision.transforms.v2 import functional as F
+from urllib3.util.url import parse_url, Url
 
 
 def ifnone(val: any, default: any):
     """Return the given value if it is not None, else return the default."""
     return val if val is not None else default
+
+
+def ifnone_url(url: str | Url | None, default: str | Url) -> Url:
+    """Wraps ifnone to always return a URL.
+
+    Args:
+        url: The Url to return. If none, the default value will be returned instead.
+        default: The default URL to use if url is None.
+
+    Returns:
+        The Url object.
+    """
+    return ifnone(
+        parse_url(url) if isinstance(url, str) else url, parse_url(default) if isinstance(default, str) else default
+    )
 
 
 def available_cores():
