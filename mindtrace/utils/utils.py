@@ -138,3 +138,171 @@ def tensor_to_pil(image: torch.Tensor, mode=None, min_val=None, max_val=None) ->
     min_ = min_val if min_val is not None else torch.min(image)
     max_ = max_val if max_val is not None else torch.max(image)
     return F.to_pil_image((image - min_) / (max_ - min_), mode=mode)
+
+import functools
+from collections.abc import Iterable
+from concurrent.futures import ThreadPoolExecutor
+
+
+def singleton(cls):
+    """Creates a singleton class.
+
+    Repeated calls to create a new instance of the class will return the original instance, even if different arguments
+    are passed to the constructor.
+
+    Note that there are many ways to implement a singleton class in Python. Refer to this
+    `discussion <https://stackoverflow.com/questions/6760685/what-is-the-best-way-of-implementing-singleton-in-python>`_
+    for a breakdown of some of the common methods and if a decorator is the best approach for your current case.
+
+    Example::
+
+        from mtrix import MtrixBase
+        from mtrix.utils import singleton
+
+        @singleton
+        class MyClass(MtrixBase):
+            def __init__(self, name):
+                self.name = name
+
+        my_instance_1 = MyClass("instance_1")
+        my_instance_2 = MyClass("instance_2")  # Returns my_instance_1
+
+        assert my_instance_1 is my_instance_2
+        assert my_instance_1.name == "instance_1"
+        assert my_instance_2.name == "instance_1"
+
+    """
+    instances = {}
+
+    def getinstance(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+
+    return getinstance
+
+
+def singleton_by_args(cls):
+    """Creates a singleton class based on the arguments passed to the class constructor.
+
+    This decorator may be used to create singleton classes that are unique based on the arguments passed to the class
+    constructor. That is, explicitly:
+
+    - If instances of the same class are created with the same args and kwargs, this decorator will return
+    the previously instantiated instance;
+    - If instances of the same class are created with different args and/or kwargs, this decorator will create a new
+    instance and store it for future reference;
+    - This decorator may be used for multiple classes, each with their own unique instances.
+
+    Reference: Siddhesh Sathe's `handy decorators library <https://github.com/siddheshsathe/handy-decorators>`_.
+
+    Example::
+
+        from mtrix import MtrixBase
+        from mtrix.utils import singleton_by_args
+
+        @singleton_by_args
+        class PostgresConnection(MtrixBase):
+            def __init__(self, host: str, port: int):
+                self.host = host
+                self.port = port
+
+        @singleton_by_args
+        class RedisConnection(MtrixBase):
+            def __init__(self, host: str, port: int):
+                self.host = host
+                self.port = port
+
+        pg_connection_1 = PostgresConnection(host="localhost", port=6379)
+        pg_connection_2 = PostgresConnection(host="localhost", port=6379)  # Returns pg_connection_1
+        pg_connection_3 = PostgresConnection(host="localhost", port=6380)  # Returns new instance
+        redis_connection_1 = RedisConnection(host="localhost", port=6379)  # Returns new instance
+        redis_connection_2 = RedisConnection(host="localhost", port=6379)  # Returns redis_connection_1
+
+        assert pg_connection_1 is pg_connection_2
+        assert pg_connection_1 is not pg_connection_3
+        assert redis_connection_1 is not pg_connection_1
+        assert redis_connection_1 is redis_connection_2
+
+    """
+
+    previous_instances = {}
+
+    @functools.wraps(cls)
+    def wrapper(*args, **kwargs):
+        key = (str(cls),) + args + tuple(sorted(kwargs.items()))  # create a unique key for the args and kwargs
+        if key not in previous_instances:
+            previous_instances[key] = cls(*args, **kwargs)
+        return previous_instances[key]
+
+    return wrapper
+
+def multithread(num_threads):
+    """
+    A decorator that enables multithreading for a function, allowing both 
+    single and batch execution using multiple threads.
+
+    The decorator supports:
+    1. **Single execution**: Runs normally when normal arguments are passed.
+    2. **Batch execution with positional arguments**: Accepts a list of tuples where each tuple 
+       contains positional arguments for the function.
+    3. **Batch execution with keyword arguments**: Accepts a list of dictionaries where 
+       each dictionary represents keyword arguments for the function.
+    4. **Explicit batch execution using `tasks` keyword**: The function can also be called 
+       with `tasks=` in `kwargs`, which should be a list of dictionaries.
+
+    Example::
+
+    **1. Normal Function Execution (No Multithreading)**
+        @multithread(num_threads=4)
+        def process_data(x, y, z):
+            return {"sum": x + y + z, "product": x * y * z}
+        assert process_data(1, 2, 3) is {'sum': 6, 'product': 6}
+
+    **2. Batch Execution with Positional Arguments (Tuples)**
+         batch_args = [(1, 2, 3), (4, 5, 6), (7, 8, 9)]
+         assert process_data(batch_args) == [{'sum': 6, 'product': 6}, {'sum': 15, 'product': 120}, {'sum': 24, 'product': 504}]
+
+    **3. Batch Execution with Keyword Arguments (Dictionaries)**
+         batch_kwargs = [
+             {"x": 1, "y": 2, "z": 3},
+             {"x": 4, "y": 5, "z": 6},
+             {"x": 7, "y": 8, "z": 9}
+         ]
+         assert process_data(batch_kwargs) == [{'sum': 6, 'product': 6}, {'sum': 15, 'product': 120}, {'sum': 24, 'product': 504}]
+
+    **4. Batch Execution Using the `tasks` Keyword**
+         assert process_data(tasks=batch_kwargs) == [{'sum': 6, 'product': 6}, {'sum': 15, 'product': 120}, {'sum': 24, 'product': 504}]
+
+    Args:
+        num_threads (int): The number of threads to use for parallel execution.
+
+    Returns:
+        function: A wrapped function that supports both normal and parallel execution.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+
+            # If only one argument is passed and it's iterable, apply threading
+            if len(args) == 1 and isinstance(args[0], Iterable) and not isinstance(args[0], (str, bytes, dict)):
+                inputs = args[0]  # List of positional argument tuples
+                if all(isinstance(arg, dict) for arg in inputs):
+                    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+                        results = list(executor.map(lambda kw: func(**kw), inputs))
+                        return results
+                with ThreadPoolExecutor(max_workers=num_threads) as executor:
+                    results = list(executor.map(lambda arg_tuple: func(*arg_tuple), inputs))
+                return results
+            # If kwargs contain batch processing information
+            elif 'tasks' in kwargs and isinstance(kwargs['tasks'], list):
+                tasks = kwargs['tasks']  # List of dicts for kwargs
+                with ThreadPoolExecutor(max_workers=num_threads) as executor:
+                    results = list(executor.map(lambda kw: func(**kw), tasks))
+                return results
+
+            # Normal function execution (single call)
+            return func(*args, **kwargs)
+
+        return wrapper
+    return decorator
