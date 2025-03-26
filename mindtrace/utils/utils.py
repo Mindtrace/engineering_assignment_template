@@ -138,3 +138,66 @@ def tensor_to_pil(image: torch.Tensor, mode=None, min_val=None, max_val=None) ->
     min_ = min_val if min_val is not None else torch.min(image)
     max_ = max_val if max_val is not None else torch.max(image)
     return F.to_pil_image((image - min_) / (max_ - min_), mode=mode)
+
+import functools
+from collections.abc import Iterable
+from concurrent.futures import ThreadPoolExecutor
+
+
+def singleton(cls):
+    """Creates a singleton class."""
+    instances = {}
+
+    def getinstance(*args, **kwargs):
+        if cls not in instances:
+            instances[cls] = cls(*args, **kwargs)
+        return instances[cls]
+
+    return getinstance
+
+
+def singleton_by_args(cls):
+    """Creates a singleton class based on the arguments passed to the class constructor."""
+
+    previous_instances = {}
+
+    @functools.wraps(cls)
+    def wrapper(*args, **kwargs):
+        key = (str(cls),) + args + tuple(sorted(kwargs.items()))  
+        if key not in previous_instances:
+            previous_instances[key] = cls(*args, **kwargs)
+        return previous_instances[key]
+
+    return wrapper
+
+def multithread(num_threads):
+    """
+    A decorator that enables multithreading for a function, allowing both 
+    single and batch execution using multiple threads.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+
+            # If only one argument is passed and it's iterable, apply threading
+            if len(args) == 1 and isinstance(args[0], Iterable) and not isinstance(args[0], (str, bytes, dict)):
+                inputs = args[0]  # List of positional argument tuples
+                if all(isinstance(arg, dict) for arg in inputs):
+                    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+                        results = list(executor.map(lambda kw: func(**kw), inputs))
+                        return results
+                with ThreadPoolExecutor(max_workers=num_threads) as executor:
+                    results = list(executor.map(lambda arg_tuple: func(*arg_tuple), inputs))
+                return results
+            # If kwargs contain batch processing information
+            elif 'tasks' in kwargs and isinstance(kwargs['tasks'], list):
+                tasks = kwargs['tasks']  # List of dicts for kwargs
+                with ThreadPoolExecutor(max_workers=num_threads) as executor:
+                    results = list(executor.map(lambda kw: func(**kw), tasks))
+                return results
+
+            # Normal function execution (single call)
+            return func(*args, **kwargs)
+
+        return wrapper
+    return decorator
